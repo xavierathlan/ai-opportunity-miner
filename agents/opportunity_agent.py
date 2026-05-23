@@ -1,228 +1,236 @@
 from openai import OpenAI
 from dotenv import load_dotenv
+
 import os
-import json
 
 # =========================
-# LOAD ENV
+# LOAD ENV VARIABLES
 # =========================
 
 load_dotenv()
 
-api_key = os.getenv("OPENAI_API_KEY")
+# =========================
+# OPENAI CONFIG
+# =========================
 
-client = OpenAI(api_key=api_key)
+client = OpenAI(
+    api_key=os.getenv("OPENAI_API_KEY")
+)
 
 # =========================
-# AGENTE
+# OPPORTUNITY AGENT
 # =========================
 
 class OpportunityAgent:
 
-    def analyze(self, text):
+    def __init__(self):
 
-        prompt = f"""
-Você é um especialista em oportunidades de negócios.
+        self.model = "gpt-4.1-mini"
 
-Analise o problema abaixo.
+    # =========================
+    # ANALYZE OPPORTUNITY
+    # =========================
 
-Responda APENAS em JSON válido.
-
-Formato obrigatório:
-
-{{
-  "category": "...",
-  "idea": "...",
-  "score": 0,
-  "reason": "...",
-  "saas": "..."
-}}
-
-Problema:
-{text}
-"""
+    def analyze(self, market_problem):
 
         try:
 
+            prompt = f"""
+            Você é um especialista em:
+
+            - startups
+            - SaaS
+            - inteligência de mercado
+            - analytics
+            - tendências digitais
+            - oportunidades escaláveis
+
+            Analise o problema abaixo:
+
+            "{market_problem}"
+
+            Retorne EXATAMENTE neste formato:
+
+            category:
+            idea:
+            score:
+            reason:
+            saas:
+
+            Regras:
+            - score entre 0 e 10
+            - foco em SaaS
+            - foco em escalabilidade
+            - resposta objetiva
+            """
+
             response = client.chat.completions.create(
-                model="gpt-4.1-mini",
+
+                model=self.model,
+
                 messages=[
+
+                    {
+                        "role": "system",
+                        "content": (
+                            "Você é um analista especialista "
+                            "em oportunidades SaaS."
+                        )
+                    },
+
                     {
                         "role": "user",
                         "content": prompt
                     }
+
                 ],
+
                 temperature=0.7
+
             )
 
             content = response.choices[0].message.content
 
-            return json.loads(content)
+            # =========================
+            # RESULT STRUCTURE
+            # =========================
 
-        except Exception:
+            result = {
 
-            return self.local_analysis(text)
+                "category": "",
+                "idea": "",
+                "score": 0,
+                "reason": "",
+                "saas": ""
 
-    # =========================
-    # FALLBACK LOCAL
-    # =========================
-
-    def local_analysis(self, text):
-
-        text = text.lower()
-
-        # =========================
-        # RETAIL
-        # =========================
-
-        if (
-            "mercado" in text or
-            "supermercado" in text or
-            "preço" in text or
-            "compras" in text
-        ):
-
-            return {
-
-                "category": "Retail",
-
-                "idea": (
-                    "Plataforma inteligente de "
-                    "comparação de preços locais"
-                ),
-
-                "score": 8,
-
-                "reason": (
-                    "Consumidores buscam economia e "
-                    "pequenos mercados possuem "
-                    "dificuldade competitiva."
-                ),
-
-                "saas": (
-                    "Sistema SaaS de inteligência "
-                    "de preços regionais"
-                )
             }
 
-        # =========================
-        # HEALTHTECH
-        # =========================
+            # =========================
+            # PARSE RESPONSE
+            # =========================
 
-        elif (
-            "farmácia" in text or
-            "hospital" in text or
-            "consulta" in text or
-            "clínica" in text
-        ):
+            lines = content.split("\n")
 
-            return {
+            for line in lines:
 
-                "category": "HealthTech",
+                line = line.strip()
 
-                "idea": (
-                    "Sistema automatizado de "
-                    "captação de pacientes"
-                ),
+                # CATEGORY
+                if line.lower().startswith("category:"):
 
-                "score": 8,
+                    result["category"] = (
 
-                "reason": (
-                    "Clínicas e farmácias possuem "
-                    "baixa presença digital."
-                ),
+                        line.replace(
+                            "category:",
+                            ""
+                        ).strip()
 
-                "saas": (
-                    "CRM SaaS para saúde"
+                    )
+
+                # IDEA
+                elif line.lower().startswith("idea:"):
+
+                    result["idea"] = (
+
+                        line.replace(
+                            "idea:",
+                            ""
+                        ).strip()
+
+                    )
+
+                # SCORE
+                elif line.lower().startswith("score:"):
+
+                    score_text = (
+
+                        line.replace(
+                            "score:",
+                            ""
+                        ).strip()
+
+                    )
+
+                    try:
+
+                        result["score"] = int(
+                            float(score_text)
+                        )
+
+                    except:
+
+                        result["score"] = 0
+
+                # REASON
+                elif line.lower().startswith("reason:"):
+
+                    result["reason"] = (
+
+                        line.replace(
+                            "reason:",
+                            ""
+                        ).strip()
+
+                    )
+
+                # SAAS
+                elif line.lower().startswith("saas:"):
+
+                    result["saas"] = (
+
+                        line.replace(
+                            "saas:",
+                            ""
+                        ).strip()
+
+                    )
+
+            # =========================
+            # FALLBACK VALIDATION
+            # =========================
+
+            if result["idea"] == "":
+
+                result["idea"] = (
+                    "Sistema inteligente "
+                    "de análise de oportunidades"
                 )
-            }
 
-        # =========================
-        # FOODTECH
-        # =========================
+            if result["category"] == "":
 
-        elif (
-            "restaurante" in text or
-            "delivery" in text or
-            "comida" in text or
-            "lanche" in text
-        ):
+                result["category"] = "Tendências"
 
-            return {
+            return result
 
-                "category": "FoodTech",
+        except Exception as error:
 
-                "idea": (
-                    "Sistema de fidelização e "
-                    "promoções inteligentes"
-                ),
+            print("\n❌ ERRO OPENAI\n")
 
-                "score": 9,
+            print(error)
 
-                "reason": (
-                    "Restaurantes possuem dificuldade "
-                    "em retenção de clientes."
-                ),
-
-                "saas": (
-                    "Plataforma SaaS para retenção "
-                    "e campanhas"
-                )
-            }
-
-        # =========================
-        # AI
-        # =========================
-
-        elif (
-            "ia" in text or
-            "inteligência artificial" in text or
-            "automação" in text
-        ):
+            # =========================
+            # FALLBACK RESPONSE
+            # =========================
 
             return {
 
-                "category": "AI",
+                "category": "Tendências",
 
                 "idea": (
-                    "Sistema automatizado de "
-                    "análise e produtividade"
-                ),
-
-                "score": 10,
-
-                "reason": (
-                    "Empresas buscam automação "
-                    "e redução de custos."
-                ),
-
-                "saas": (
-                    "Plataforma de automação com IA"
-                )
-            }
-
-        # =========================
-        # FALLBACK
-        # =========================
-
-        else:
-
-            return {
-
-                "category": "General",
-
-                "idea": (
-                    "Necessário coletar mais dados "
-                    "sobre o problema"
+                    "Sistema inteligente "
+                    "de análise de mercado"
                 ),
 
                 "score": 5,
 
                 "reason": (
-                    "Poucos sinais detectados."
+                    "Fallback automático ativado "
+                    "devido a erro na OpenAI."
                 ),
 
                 "saas": (
-                    "Sistema de análise de tendências"
+                    "Plataforma SaaS "
+                    "de analytics inteligente"
                 )
+
             }

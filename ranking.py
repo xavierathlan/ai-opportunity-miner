@@ -1,61 +1,49 @@
-import json
+import sqlite3
+import pandas as pd
 
-JSON_FILE = "data/opportunities.json"
+# =========================
+# DATABASE
+# =========================
 
+DATABASE = "data/database.db"
 
-def load_opportunities():
+# =========================
+# GET RANKING
+# =========================
 
-    try:
+def get_ranking():
 
-        with open(
-            JSON_FILE,
-            "r",
-            encoding="utf-8"
-        ) as file:
+    conn = sqlite3.connect(DATABASE)
 
-            return json.load(file)
+    query = """
 
-    except Exception:
+    SELECT
+        idea,
+        category,
+        score,
+        saas,
+        created_at
 
-        return []
+    FROM opportunities
 
+    ORDER BY score DESC
 
-def show_ranking():
+    """
 
-    data = load_opportunities()
+    df = pd.read_sql_query(query, conn)
 
-    if not data:
+    conn.close()
 
-        print("\n❌ Nenhuma oportunidade encontrada.")
-        return
+    return df
 
-    # ordena pelo score
-    ranked = sorted(
-        data,
-        key=lambda x: x.get("score", 0),
-        reverse=True
-    )
+# =========================
+# MAIN
+# =========================
+
+if __name__ == "__main__":
+
+    ranking = get_ranking()
 
     print("\n🏆 RANKING DE OPORTUNIDADES\n")
 
-    for index, item in enumerate(ranked, start=1):
-
-        print(f"\n#{index}")
-
-        print(f"💡 IDEIA:")
-        print(item.get("idea", "N/A"))
-
-        print(f"\n🔥 SCORE:")
-        print(item.get("score", 0))
-
-        print(f"\n🧠 MOTIVO:")
-        print(item.get("reason", "N/A"))
-
-        print(f"\n🖥 SAAS:")
-        print(item.get("saas", "N/A"))
-
-        print("\n" + "=" * 40)
-
-
-if __name__ == "__main__":
-    show_ranking()
+    print(ranking)

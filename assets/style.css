@@ -1,0 +1,30 @@
+.block-container {
+
+    padding-top: 1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+
+}
+
+div[data-testid="stMetric"] {
+
+    background-color: #111827;
+
+    padding: 15px;
+
+    border-radius: 12px;
+
+    text-align: center;
+
+}
+
+@media (max-width: 768px) {
+
+    .block-container {
+
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+
+    }
+
+}

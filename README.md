@@ -1,20 +1,46 @@
-# AI Opportunity Miner
+# 🚀 AI Opportunity Miner
 
-Plataforma de inteligência de mercado com IA.
+Plataforma inteligente para descoberta de oportunidades SaaS utilizando IA, analytics e tendências de mercado.
 
-## Tecnologias
+---
+
+# 📊 Funcionalidades
+
+- Análise inteligente de oportunidades
+- Dashboard analytics
+- Ranking de oportunidades
+- Filtros dinâmicos
+- Gráficos interativos
+- SQLite integrado
+- Interface responsiva
+- Estrutura SaaS-ready
+
+---
+
+# 🧠 Tecnologias
 
 - Python
-- OpenAI
 - Streamlit
+- SQLite3
 - Plotly
+- OpenAI API
 - Pandas
 
-## Funcionalidades
+---
 
-- Detecção de oportunidades
-- Dashboard analítico
-- Gráficos interativos
-- Categorias automáticas
-- Ranking de ideias
-- Histórico persistente
+# 📁 Estrutura
+
+```bash
+ai-opportunity-miner/
+│
+├── agents/
+├── assets/
+├── database/
+├── data/
+├── services/
+│
+├── dashboard.py
+├── main.py
+├── ranking.py
+├── requirements.txt
+└── README.md

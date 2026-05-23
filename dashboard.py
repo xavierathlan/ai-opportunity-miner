@@ -1,116 +1,149 @@
 import streamlit as st
 import pandas as pd
-import json
+import sqlite3
 import plotly.express as px
-
-JSON_FILE = "data/opportunities.json"
+import os
 
 # =========================
-# CONFIG
+# PAGE CONFIG
 # =========================
 
 st.set_page_config(
+
     page_title="AI Opportunity Miner",
+
     page_icon="🚀",
+
     layout="wide",
+
     initial_sidebar_state="expanded"
+
 )
 
 # =========================
-# CSS RESPONSIVO
+# BASE DIRECTORY
 # =========================
 
-st.markdown(
-    """
-    <style>
-
-    .main {
-        padding-top: 1rem;
-    }
-
-    .block-container {
-        padding-top: 1rem;
-        padding-left: 1rem;
-        padding-right: 1rem;
-        max-width: 100%;
-    }
-
-    div[data-testid="stMetric"] {
-        background-color: #111827;
-        padding: 15px;
-        border-radius: 12px;
-        text-align: center;
-    }
-
-    @media (max-width: 768px) {
-
-        .block-container {
-            padding-left: 0.5rem;
-            padding-right: 0.5rem;
-        }
-
-        h1 {
-            font-size: 28px !important;
-        }
-
-        h2 {
-            font-size: 22px !important;
-        }
-
-        h3 {
-            font-size: 18px !important;
-        }
-
-        p, div {
-            font-size: 15px !important;
-        }
-    }
-
-    </style>
-    """,
-    unsafe_allow_html=True
+BASE_DIR = os.path.dirname(
+    os.path.abspath(__file__)
 )
 
 # =========================
-# HEADER
+# DATABASE CONFIG
+# =========================
+
+DATABASE_PATH = os.path.join(
+    BASE_DIR,
+    "data",
+    "database.db"
+)
+
+# =========================
+# LOAD CSS
+# =========================
+
+CSS_PATH = os.path.join(
+    BASE_DIR,
+    "assets",
+    "style.css"
+)
+
+try:
+
+    with open(CSS_PATH, "r", encoding="utf-8") as css:
+
+        st.markdown(
+
+            f"<style>{css.read()}</style>",
+
+            unsafe_allow_html=True
+
+        )
+
+except Exception as error:
+
+    st.warning(
+        f"CSS não carregado: {error}"
+    )
+
+# =========================
+# TITLE
 # =========================
 
 st.title("🚀 AI Opportunity Miner")
 
-st.subheader("🏆 Dashboard Inteligente de Oportunidades")
+st.subheader(
+    "Dashboard Inteligente de Oportunidades"
+)
+
+# =========================
+# LOAD DATABASE
+# =========================
+
+def load_opportunities():
+
+    try:
+
+        conn = sqlite3.connect(
+            DATABASE_PATH
+        )
+
+        query = """
+
+        SELECT
+
+            id,
+            problem,
+            category,
+            idea,
+            score,
+            reason,
+            saas,
+            created_at
+
+        FROM opportunities
+
+        ORDER BY score DESC
+
+        """
+
+        dataframe = pd.read_sql_query(
+            query,
+            conn
+        )
+
+        conn.close()
+
+        return dataframe
+
+    except Exception as error:
+
+        st.error(
+            f"Erro ao carregar banco: {error}"
+        )
+
+        return pd.DataFrame()
 
 # =========================
 # LOAD DATA
 # =========================
 
-try:
-
-    with open(
-        JSON_FILE,
-        "r",
-        encoding="utf-8"
-    ) as file:
-
-        data = json.load(file)
-
-except Exception:
-
-    data = []
+df = load_opportunities()
 
 # =========================
-# EMPTY
+# EMPTY DATABASE
 # =========================
 
-if not data:
+if df.empty:
 
-    st.warning("Nenhuma oportunidade encontrada.")
+    st.warning(
+        "Nenhuma oportunidade encontrada."
+    )
 
 else:
 
-    df = pd.DataFrame(data)
-
     # =========================
-    # AJUSTES
+    # DATA TREATMENT
     # =========================
 
     df["score"] = pd.to_numeric(
@@ -118,45 +151,53 @@ else:
         errors="coerce"
     ).fillna(0)
 
-    df = df.sort_values(
-        by="score",
-        ascending=False
-    )
-
     # =========================
     # SIDEBAR
     # =========================
 
-    st.sidebar.title("⚙ Painel")
+    st.sidebar.title("⚙ Filtros")
 
     score_min = st.sidebar.slider(
+
         "🔥 Score mínimo",
+
         min_value=0,
+
         max_value=10,
+
         value=5
+
     )
 
     search = st.sidebar.text_input(
-        "🔎 Buscar palavra-chave"
+        "🔎 Buscar"
     )
 
     categories = ["Todos"] + sorted(
-        df["category"].dropna().unique().tolist()
+        df["category"]
+        .dropna()
+        .unique()
+        .tolist()
     )
 
     selected_category = st.sidebar.selectbox(
+
         "🏷 Categoria",
+
         categories
+
     )
 
     # =========================
-    # BOTÃO BUSCAR
+    # SEARCH BUTTON
     # =========================
 
-    buscar = st.sidebar.button("🚀 Buscar")
+    buscar = st.sidebar.button(
+        "🚀 Buscar"
+    )
 
     # =========================
-    # FILTROS
+    # FILTERS
     # =========================
 
     filtered_df = df[
@@ -166,22 +207,27 @@ else:
     if selected_category != "Todos":
 
         filtered_df = filtered_df[
-            filtered_df["category"] == selected_category
+            filtered_df["category"]
+            == selected_category
         ]
 
     if search:
 
         filtered_df = filtered_df[
-            filtered_df[
-                "idea"
-            ].str.lower().str.contains(
+
+            filtered_df["idea"]
+
+            .str.lower()
+
+            .str.contains(
                 search.lower(),
                 na=False
             )
+
         ]
 
     # =========================
-    # EXECUTAR FILTROS
+    # EXECUTE FILTERS
     # =========================
 
     if buscar or True:
@@ -189,7 +235,7 @@ else:
         df = filtered_df
 
         # =========================
-        # MÉTRICAS
+        # METRICS
         # =========================
 
         col1, col2, col3 = st.columns(3)
@@ -214,114 +260,207 @@ else:
         st.markdown("---")
 
         # =========================
-        # TABELA RESPONSIVA
+        # TABLE
         # =========================
 
-        st.subheader("📋 Oportunidades")
+        st.subheader(
+            "📋 Oportunidades"
+        )
 
         st.dataframe(
+
             df,
+
             use_container_width=True,
+
             hide_index=True
+
         )
 
         st.markdown("---")
 
         # =========================
-        # GRÁFICO BARRAS
+        # BAR CHART
         # =========================
 
-        st.subheader("📊 Ranking de Oportunidades")
+        st.subheader(
+            "📊 Ranking de Oportunidades"
+        )
 
         fig_bar = px.bar(
+
             df,
+
             x="idea",
+
             y="score",
+
             color="category",
+
             hover_data=["saas"],
+
             title="Ranking por Score"
+
         )
 
         fig_bar.update_layout(
+
             xaxis_title="Ideia",
+
             yaxis_title="Score",
-            height=500,
-            autosize=True
+
+            height=500
+
         )
 
         st.plotly_chart(
+
             fig_bar,
+
             use_container_width=True
+
         )
 
         st.markdown("---")
 
         # =========================
-        # GRÁFICO PIZZA
+        # PIE CHART
         # =========================
 
-        st.subheader("🥧 Distribuição por Categoria")
+        st.subheader(
+            "🥧 Distribuição por Categoria"
+        )
 
         category_count = (
+
             df["category"]
+
             .value_counts()
+
             .reset_index()
+
         )
 
         category_count.columns = [
+
             "category",
             "count"
+
         ]
 
         fig_pie = px.pie(
+
             category_count,
+
             names="category",
+
             values="count",
+
             title="Categorias"
+
         )
 
         fig_pie.update_layout(
-            height=500,
-            autosize=True
+            height=500
         )
 
         st.plotly_chart(
+
             fig_pie,
+
             use_container_width=True
+
         )
 
         st.markdown("---")
 
         # =========================
-        # CARDS RESPONSIVOS
+        # TIMELINE
         # =========================
 
-        st.subheader("🔥 Melhores Oportunidades")
+        st.subheader(
+            "📈 Evolução das Oportunidades"
+        )
+
+        timeline_df = df.copy()
+
+        timeline_df["created_at"] = pd.to_datetime(
+            timeline_df["created_at"]
+        )
+
+        timeline_group = (
+
+            timeline_df
+
+            .groupby(
+                timeline_df["created_at"].dt.date
+            )
+
+            .size()
+
+            .reset_index(name="total")
+
+        )
+
+        fig_line = px.line(
+
+            timeline_group,
+
+            x="created_at",
+
+            y="total",
+
+            markers=True,
+
+            title="Oportunidades por Data"
+
+        )
+
+        fig_line.update_layout(
+            height=500
+        )
+
+        st.plotly_chart(
+
+            fig_line,
+
+            use_container_width=True
+
+        )
+
+        st.markdown("---")
+
+        # =========================
+        # OPPORTUNITY CARDS
+        # =========================
+
+        st.subheader(
+            "🔥 Melhores Oportunidades"
+        )
 
         for _, row in df.iterrows():
 
-            with st.container():
+            st.markdown(
 
-                st.markdown(
-                    f"""
-                    <div style='background:#111827;
-                                padding:20px;
-                                border-radius:15px;
-                                margin-bottom:20px;'>
+                f"""
 
-                    <h3>💡 {row['idea']}</h3>
+                ### 💡 {row['idea']}
 
-                    <p><b>🏷 Categoria:</b> {row['category']}</p>
+                **🏷 Categoria:** {row['category']}
 
-                    <p><b>🔥 Score:</b> {row['score']}</p>
+                **🔥 Score:** {row['score']}
 
-                    <p><b>🧠 Motivo:</b><br>
-                    {row['reason']}</p>
+                **🧠 Motivo:**  
+                {row['reason']}
 
-                    <p><b>🖥 SaaS:</b><br>
-                    {row['saas']}</p>
+                **🖥 SaaS:**  
+                {row['saas']}
 
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
+                **📅 Criado em:**  
+                {row['created_at']}
+
+                ---
+
+                """
+
+            )

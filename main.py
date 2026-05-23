@@ -1,100 +1,98 @@
 from agents.opportunity_agent import OpportunityAgent
 
-import csv
-import json
+import sqlite3
 import os
 
-CSV_FILE = "data/history.csv"
-JSON_FILE = "data/opportunities.json"
+# =========================
+# DATABASE
+# =========================
+
+DATABASE = "data/database.db"
+
+os.makedirs("data", exist_ok=True)
+
+# =========================
+# CREATE DATABASE
+# =========================
+
+conn = sqlite3.connect(DATABASE)
+
+cursor = conn.cursor()
+
+cursor.execute("""
+
+CREATE TABLE IF NOT EXISTS opportunities (
+
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    problem TEXT,
+
+    category TEXT,
+
+    idea TEXT,
+
+    score INTEGER,
+
+    reason TEXT,
+
+    saas TEXT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+)
+
+""")
+
+conn.commit()
+
+conn.close()
+
+# =========================
+# AGENT
+# =========================
 
 agent = OpportunityAgent()
 
 # =========================
-# SALVAR CSV
+# SAVE OPPORTUNITY
 # =========================
 
-def save_csv(problem, result):
+def save_opportunity(problem, result):
 
-    file_exists = os.path.isfile(CSV_FILE)
+    conn = sqlite3.connect(DATABASE)
 
-    with open(
-        CSV_FILE,
-        mode="a",
-        newline="",
-        encoding="utf-8"
-    ) as file:
+    cursor = conn.cursor()
 
-        writer = csv.writer(file)
+    cursor.execute("""
 
-        if not file_exists or os.path.getsize(CSV_FILE) == 0:
+    INSERT INTO opportunities (
 
-            writer.writerow([
-                "problem",
-                "category",
-                "idea",
-                "score",
-                "reason",
-                "saas"
-            ])
+        problem,
+        category,
+        idea,
+        score,
+        reason,
+        saas
 
-        writer.writerow([
-            problem,
-            result.get("category", ""),
-            result.get("idea", ""),
-            result.get("score", ""),
-            result.get("reason", ""),
-            result.get("saas", "")
-        ])
+    )
 
+    VALUES (?, ?, ?, ?, ?, ?)
 
-# =========================
-# SALVAR JSON
-# =========================
+    """, (
 
-def save_json(problem, result):
+        problem,
 
-    data = []
+        result["category"],
+        result["idea"],
+        result["score"],
+        result["reason"],
+        result["saas"]
 
-    if os.path.exists(JSON_FILE):
+    ))
 
-        try:
+    conn.commit()
 
-            with open(
-                JSON_FILE,
-                "r",
-                encoding="utf-8"
-            ) as file:
-
-                data = json.load(file)
-
-        except Exception:
-
-            data = []
-
-    data.append({
-
-        "problem": problem,
-        "category": result.get("category", ""),
-        "idea": result.get("idea", ""),
-        "score": result.get("score", ""),
-        "reason": result.get("reason", ""),
-        "saas": result.get("saas", "")
-
-    })
-
-    with open(
-        JSON_FILE,
-        "w",
-        encoding="utf-8"
-    ) as file:
-
-        json.dump(
-            data,
-            file,
-            indent=4,
-            ensure_ascii=False
-        )
-
+    conn.close()
 
 # =========================
 # MAIN
@@ -117,30 +115,21 @@ def main():
 
         result = agent.analyze(text)
 
-        print("\n📊 ANÁLISE DA IA\n")
+        print("\n📊 ANÁLISE\n")
 
-        if isinstance(result, dict):
+        print(f"🏷 Categoria:\n{result['category']}")
 
-            print(f"🏷 CATEGORIA:\n{result.get('category', '')}")
+        print(f"\n💡 IDEIA:\n{result['idea']}")
 
-            print(f"\n💡 IDEIA:\n{result.get('idea', '')}")
+        print(f"\n🔥 SCORE:\n{result['score']}")
 
-            print(f"\n🔥 SCORE:\n{result.get('score', '')}")
+        print(f"\n🧠 MOTIVO:\n{result['reason']}")
 
-            print(f"\n🧠 MOTIVO:\n{result.get('reason', '')}")
+        print(f"\n🖥 SAAS:\n{result['saas']}")
 
-            print(f"\n🖥 SAAS:\n{result.get('saas', '')}")
+        save_opportunity(text, result)
 
-            save_csv(text, result)
-            save_json(text, result)
-
-            print("\n💾 Dados salvos com sucesso!")
-
-        else:
-
-            print("\n❌ Erro na resposta da IA:")
-            print(result)
-
+        print("\n💾 Oportunidade salva!")
 
 if __name__ == "__main__":
     main()
